@@ -117,19 +117,19 @@ http://127.0.0.1:5000
 ### 🔧 عیب‌یابی (Troubleshooting)
 
 ```
-خطای FFmpeg not found
+- خطای FFmpeg not found
 مطمئن شوید FFmpeg نصب است و در PATH قرار دارد
 
 با دستور ffmpeg -version در ترمینال تست کنید
 
-خطای DeepL API key is required
+- خطای DeepL API key is required
 هنگام انتخاب DeepL، کلید API معتبر خود را در کادر مربوطه وارد کنید
 یا از Google Translate استفاده کنید
 
-خطای Language not supported در دوبله
+- خطای Language not supported در دوبله
 همه‌ی زبان‌ها توسط gTTS پشتیبانی نمی‌شوند. اگر خطا داد، فقط زیرنویس تولید می‌شود
 
-خطای Connection aborted در ترجمه
+- خطای Connection aborted در ترجمه
 این خطا معمولاً به‌خاطر قطع ارتباط با سرور مترجم است. برنامه به‌صورت خودکار به Google Translate Fallback می‌کند
 
 ```
