@@ -11,10 +11,11 @@ TRX : TJ6upyswMxPNCeFgctiQjhLsyuGyxETug8
 
 یک ابزار کامل و قدرتمند برای **تبدیل خودکار گفتار ویدیو به زیرنویس و ترجمه‌ی آن به زبان‌های مختلف** با استفاده از هوش مصنوعی. این پروژه از **OpenAI Whisper** برای تشخیص گفتار، **deep-translator** برای ترجمه و **gTTS** برای دوبله‌ی صوتی استفاده می‌کند.
 
-[![Python](https://www.python.org/)
-[![Flask](https://flask.palletsprojects.com/)
-[![License]License MIT](LICENSE)
-[![OpenAI Whisper](https://github.com/openai/whisper)
+### Special TNX to
+
+FFmpeg : https://github.com/ffmpeg/ffmpeg
+Flask : https://flask.palletsprojects.com/
+OpenAI Whisper : https://github.com/openai/whisper
 
 ---
 
@@ -30,12 +31,15 @@ TRX : TJ6upyswMxPNCeFgctiQjhLsyuGyxETug8
 - ⏱️ **برآورد زمان باقی‌مانده** – نمایش ETA در حین پردازش
 - 🔄 **لغو پردازش** – امکان توقف عملیات در هر مرحله
 - 🔑 **مدیریت API Key** – ورود کلید API برای DeepL و Microsoft در همان صفحه
-- 🚀 **پردازش محلی** – بدون ارسال داده به سرورهای خارجی (به جز ترجمه و TTS)
 - 🎯 **Fallback خودکار** – در صورت عدم پشتیبانی DeepL از زبانی، به‌صورت خودکار به Google Translate تغییر می‌کند
 
 ---
 
 ## 🖼️ پیش‌نمایش (Screenshot)
+<img width="1280" height="673" alt="4" src="https://github.com/user-attachments/assets/b800ff9d-22f8-4e2a-8cec-61f4ade2977f" />
+<img width="1280" height="673" alt="3" src="https://github.com/user-attachments/assets/d17ee588-319c-40e1-be2d-d3abf27dbeb9" />
+<img width="1280" height="668" alt="2" src="https://github.com/user-attachments/assets/42443ccf-0ec7-4d53-b556-460ce078488d" />
+<img width="1280" height="674" alt="1" src="https://github.com/user-attachments/assets/aac1cd9c-1208-43f3-b640-69e311188db4" />
 
 
 
