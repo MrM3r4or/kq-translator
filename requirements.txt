@@ -1,0 +1,12 @@
+flask==3.0.3
+flask-socketio==5.3.6
+openai-whisper==20231117
+deep-translator==1.11.4
+moviepy==1.0.3
+numpy==1.26.4
+torch>=2.0.0
+torchaudio>=2.0.0
+ffmpeg-python==0.2.0
+werkzeug==3.0.3
+python-socketio==5.11.2
+python-engineio==4.9.1

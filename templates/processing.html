@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Processing — SubtitleAI</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+  <style>
+    /* ── Reset ─────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:         #080b14;
+      --surface:    rgba(255,255,255,0.04);
+      --surface-2:  rgba(255,255,255,0.07);
+      --border:     rgba(255,255,255,0.08);
+      --text:       #e2e8f0;
+      --text-dim:   #718096;
+      --text-muted: #4a5568;
+      --accent:     #63b3ed;
+      --accent-2:   #9f7aea;
+      --green:      #68d391;
+      --red:        #fc8181;
+      --yellow:     #f6ad55;
+      --grad-2:     linear-gradient(135deg, #63b3ed 0%, #9f7aea 100%);
+      --grad-ok:    linear-gradient(135deg, #68d391, #38a169);
+      --glow:       0 0 40px rgba(99,179,237,0.12);
+      --radius:     16px;
+      --radius-sm:  10px;
+      --font:       'Inter', sans-serif;
+      --mono:       'JetBrains Mono', monospace;
+    }
+
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    .bg-canvas { position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden; }
+    .orb { position:absolute;border-radius:50%;filter:blur(90px);opacity:.18;animation:drift 20s ease-in-out infinite alternate; }
+    .orb-1 { width:500px;height:500px;background:radial-gradient(circle,#667eea,transparent);top:-150px;left:-100px; }
+    .orb-2 { width:400px;height:400px;background:radial-gradient(circle,#9f7aea,transparent);bottom:0;right:-100px;animation-delay:-10s; }
+    @keyframes drift { from{transform:translate(0,0);} to{transform:translate(30px,20px);} }
+
+    .wrapper { position:relative;z-index:1;display:flex;flex-direction:column;min-height:100vh; }
+
+    .topbar {
+      display:flex;align-items:center;justify-content:space-between;
+      padding:1rem 1.5rem; border-bottom:1px solid var(--border);
+      backdrop-filter:blur(20px);position:sticky;top:0;z-index:100;
+      background: rgba(8,11,20,0.8);
+    }
+    .topbar-brand { display:flex;align-items:center;gap:0.6rem;font-weight:700;font-size:0.95rem; }
+    .brand-dot { width:8px;height:8px;border-radius:50%;background:var(--accent);animation:pulse 2s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1;}50%{opacity:0.4;} }
+    .topbar-back {
+      background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);
+      color:var(--text-dim);cursor:pointer;font-family:var(--font);font-size:0.82rem;
+      padding:0.45rem 0.9rem;text-decoration:none;display:flex;align-items:center;gap:0.4rem;
+      transition:all .2s;
+    }
+    .topbar-back:hover { border-color:var(--accent);color:var(--accent); }
+
+    .main {
+      flex:1; padding:1.25rem 1.5rem;
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      grid-template-rows: auto 1fr auto;
+      gap:1.25rem;
+      max-width:1400px;
+      margin:0 auto;
+      width:100%;
+    }
+    @media (max-width:900px) {
+      .main { grid-template-columns:1fr; }
+    }
+
+    .progress-section { grid-column:1/-1; }
+
+    .steps-bar {
+      display:flex;align-items:center;gap:0;
+      background:var(--surface);border:1px solid var(--border);
+      border-radius:var(--radius-sm);padding:1rem 1.25rem;
+      overflow-x:auto;
+    }
+    .step-item {
+      display:flex;align-items:center;gap:0.5rem;flex-shrink:0;
+      font-size:0.78rem;color:var(--text-muted);transition:color .3s;
+    }
+    .step-item.active { color:var(--accent); }
+    .step-item.done   { color:var(--green); }
+    .step-num {
+      width:24px;height:24px;border-radius:50%;
+      border:2px solid currentColor;
+      display:flex;align-items:center;justify-content:center;
+      font-size:0.68rem;font-weight:700;transition:all .3s;flex-shrink:0;
+    }
+    .step-item.active .step-num { background:rgba(99,179,237,.15);border-color:var(--accent); }
+    .step-item.done .step-num   { background:rgba(104,211,145,.15);border-color:var(--green); }
+    .step-sep { flex:1;min-width:1.5rem;height:1px;background:var(--border);margin:0 0.5rem; }
+
+    .prog-row {
+      display:flex;align-items:center;gap:1rem;
+      margin-top:0.75rem;
+    }
+    .prog-bar {
+      flex:1;height:6px;background:var(--border);border-radius:999px;overflow:hidden;
+    }
+    .prog-fill {
+      height:100%;width:0%;
+      background:var(--grad-2);
+      border-radius:999px;
+      transition:width .6s cubic-bezier(.4,0,.2,1);
+      position:relative;overflow:hidden;
+    }
+    .prog-fill::after {
+      content:'';position:absolute;inset:0;
+      background:linear-gradient(90deg,transparent,rgba(255,255,255,.3),transparent);
+      animation:shimmer 1.8s infinite;
+    }
+    @keyframes shimmer { from{transform:translateX(-100%);} to{transform:translateX(200%);} }
+    .prog-pct { font-size:0.8rem;font-family:var(--mono);color:var(--accent);min-width:3.5rem;text-align:right; }
+    .prog-eta { font-size:0.8rem;color:var(--text-dim);min-width:10rem;text-align:right; }
+
+    .col-left, .col-right { display:flex;flex-direction:column;gap:1rem; }
+
+    .card {
+      background:var(--surface);
+      backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+      border:1px solid var(--border);border-radius:var(--radius);
+      overflow:hidden;
+    }
+    .card-header {
+      display:flex;align-items:center;justify-content:space-between;
+      padding:.75rem 1rem;border-bottom:1px solid var(--border);
+      font-size:0.78rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text-dim);
+    }
+    .card-header-badges { display:flex;gap:.4rem;align-items:center; }
+
+    .console-wrap { flex:1;min-height:0; }
+    .console {
+      height:420px; overflow-y:auto;
+      padding:.75rem 1rem;
+      font-family:var(--mono);font-size:0.75rem;line-height:1.6;
+      background:#050810;
+    }
+    .console::-webkit-scrollbar { width:4px; }
+    .console::-webkit-scrollbar-track { background:transparent; }
+    .console::-webkit-scrollbar-thumb { background:var(--border);border-radius:2px; }
+
+    .log-line { display:flex;gap:.5rem;margin-bottom:.1rem;animation:fadeInLine .2s ease; }
+    @keyframes fadeInLine { from{opacity:0;transform:translateY(2px);} to{opacity:1;transform:none;} }
+    .ln { color:#2d3748;min-width:2.5rem;text-align:right;user-select:none;flex-shrink:0; }
+    .lt { flex:1;word-break:break-all; }
+    .lt.info    { color:#90cdf4; }
+    .lt.success { color:var(--green); }
+    .lt.warn    { color:var(--yellow); }
+    .lt.error   { color:var(--red); }
+
+    .video-section { flex:1;min-height:0; }
+    .video-wrap {
+      position:relative;background:#000;
+      aspect-ratio:16/9;overflow:hidden;
+    }
+    video {
+      width:100%;height:100%;
+      display:block;
+      background:#000;
+    }
+    video::cue {
+      background: rgba(0,0,0,0.75);
+      color: #fff;
+      font-family: var(--font);
+      font-size: 1rem;
+      padding: 0.2em 0.5em;
+      border-radius: 4px;
+    }
+    .video-placeholder {
+      position:absolute;inset:0;display:flex;flex-direction:column;
+      align-items:center;justify-content:center;gap:.75rem;
+      background:rgba(0,0,0,.6);color:var(--text-dim);font-size:.85rem;
+    }
+    .video-placeholder.hidden { display:none; }
+
+    .badge {
+      display:inline-flex;align-items:center;gap:.3rem;
+      font-size:.7rem;padding:.2rem .55rem;border-radius:999px;
+      border:1px solid transparent;
+    }
+    .badge-blue { background:rgba(99,179,237,.1);border-color:rgba(99,179,237,.25);color:var(--accent); }
+    .badge-green { background:rgba(104,211,145,.1);border-color:rgba(104,211,145,.25);color:var(--green); }
+    .badge-yellow { background:rgba(246,173,85,.1);border-color:rgba(246,173,85,.25);color:var(--yellow); }
+    .badge-pulse::before {
+      content:'';width:5px;height:5px;border-radius:50%;background:currentColor;
+      display:inline-block;animation:pulse 1s infinite;
+    }
+
+    .control-section { grid-column:1/-1; }
+    .control-panel {
+      display:flex;flex-wrap:wrap;align-items:center;gap:.75rem;
+      background:var(--surface);border:1px solid var(--border);
+      border-radius:var(--radius);padding:1rem 1.25rem;
+    }
+    .control-group { display:flex;gap:.5rem;align-items:center;margin-right:auto; }
+
+    .btn {
+      display:inline-flex;align-items:center;gap:.4rem;
+      border:none;border-radius:var(--radius-sm);
+      cursor:pointer;font-family:var(--font);font-size:.82rem;font-weight:600;
+      padding:.55rem 1rem;transition:all .2s cubic-bezier(.4,0,.2,1);
+    }
+    .btn:disabled { opacity:.4;cursor:not-allowed;transform:none!important; }
+    .btn-danger {
+      background:rgba(252,129,129,.1);border:1px solid rgba(252,129,129,.25);color:var(--red);
+    }
+    .btn-danger:hover:not(:disabled) { background:rgba(252,129,129,.2);box-shadow:0 0 20px rgba(252,129,129,.2); }
+
+    .btn-primary {
+      background:var(--grad-2);color:#fff;
+      box-shadow:0 2px 16px rgba(99,179,237,.25);
+    }
+    .btn-primary:hover:not(:disabled) { transform:translateY(-1px);box-shadow:0 4px 24px rgba(99,179,237,.35); }
+
+    .btn-outline {
+      background:transparent;border:1px solid var(--border);color:var(--text-dim);
+    }
+    .btn-outline:hover:not(:disabled) { border-color:var(--accent);color:var(--accent); }
+
+    .btn-success {
+      background:var(--grad-ok);color:#fff;
+      box-shadow:0 2px 16px rgba(104,211,145,.25);
+      animation:glow-pulse 2s ease-in-out infinite;
+    }
+    @keyframes glow-pulse { 0%,100%{box-shadow:0 2px 16px rgba(104,211,145,.25);} 50%{box-shadow:0 4px 28px rgba(104,211,145,.45);} }
+    .btn-success:hover:not(:disabled) { transform:translateY(-1px); }
+
+    .done-banner {
+      display:none;
+      grid-column:1/-1;
+      background:linear-gradient(135deg,rgba(104,211,145,.1),rgba(56,161,105,.05));
+      border:1px solid rgba(104,211,145,.25);border-radius:var(--radius);
+      padding:1.5rem;align-items:center;gap:1.25rem;flex-wrap:wrap;
+    }
+    .done-banner.show { display:flex; }
+    .done-icon { font-size:2rem;filter:drop-shadow(0 0 12px rgba(104,211,145,.5)); }
+    .done-text h3 { font-size:1rem;font-weight:700;color:var(--green);margin-bottom:.2rem; }
+    .done-text p  { font-size:.82rem;color:var(--text-dim); }
+    .done-actions { margin-left:auto;display:flex;gap:.6rem; }
+
+    .error-banner {
+      display:none;
+      grid-column:1/-1;
+      background:rgba(252,129,129,.07);
+      border:1px solid rgba(252,129,129,.25);border-radius:var(--radius);
+      padding:1rem 1.25rem;align-items:center;gap:.75rem;
+    }
+    .error-banner.show { display:flex; }
+    .error-msg { font-size:.85rem;color:var(--red); }
+
+    .status-row {
+      display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;
+    }
+    .status-label { font-size:.8rem;font-weight:500; }
+
+    footer {
+      text-align:center;padding:1.25rem 1rem;
+      color:var(--text-muted);font-size:.78rem;
+      border-top:1px solid var(--border);
+    }
+    .footer-copy { display:flex;align-items:center;justify-content:center;gap:.4rem; }
+    .heart { color:#f56565;animation:heartbeat 1.5s ease-in-out infinite; }
+    @keyframes heartbeat { 0%,100%{transform:scale(1);}50%{transform:scale(1.15);} }
+
+    @media (max-width:600px) {
+      .main { padding:1rem; gap:1rem; }
+      .console { height:280px; }
+      .steps-bar { gap:0; }
+      .step-label { display:none; }
+      .prog-eta { display:none; }
+      .done-actions { margin-left:0;width:100%; }
+      .done-actions .btn { flex:1;justify-content:center; }
+    }
+  </style>
+</head>
+<body>
+<div class="bg-canvas">
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+</div>
+
+<div class="wrapper">
+  <nav class="topbar">
+    <div class="topbar-brand">
+      <div class="brand-dot"></div>
+      SubtitleAI
+    </div>
+    <a href="/" class="topbar-back">← New Video</a>
+  </nav>
+
+  <div class="main">
+
+    <!-- Progress Section -->
+    <div class="progress-section">
+      <div class="steps-bar">
+        <div class="step-item active" id="step-1">
+          <div class="step-num">1</div>
+          <span class="step-label">Extract Audio</span>
+        </div>
+        <div class="step-sep"></div>
+        <div class="step-item" id="step-2">
+          <div class="step-num">2</div>
+          <span class="step-label">Transcribe</span>
+        </div>
+        <div class="step-sep"></div>
+        <div class="step-item" id="step-3">
+          <div class="step-num">3</div>
+          <span class="step-label">Translate</span>
+        </div>
+        <div class="step-sep"></div>
+        <div class="step-item" id="step-4">
+          <div class="step-num">4</div>
+          <span class="step-label">Generate SRT</span>
+        </div>
+      </div>
+      <div class="prog-row">
+        <div class="prog-bar">
+          <div class="prog-fill" id="progFill"></div>
+        </div>
+        <div class="prog-pct" id="progPct">0%</div>
+        <div class="prog-eta" id="progEta">Waiting to start…</div>
+      </div>
+    </div>
+
+    <!-- Done Banner -->
+    <div class="done-banner" id="doneBanner">
+      <div class="done-icon">🎉</div>
+      <div class="done-text">
+        <h3>Subtitles ready!</h3>
+        <p>Your translated subtitles are displayed on the video. Download the SRT file below.</p>
+      </div>
+      <div class="done-actions">
+        <a class="btn btn-success" id="btnDownload" href="#" download>⬇ Download .SRT</a>
+        <a class="btn btn-outline" href="/">↩ New Video</a>
+      </div>
+    </div>
+
+    <!-- Error Banner -->
+    <div class="error-banner" id="errorBanner">
+      <span>❌</span>
+      <span class="error-msg" id="errorMsg">An error occurred.</span>
+    </div>
+
+    <!-- Left: Console -->
+    <div class="col-left">
+      <div class="card console-wrap">
+        <div class="card-header">
+          <span>📟 Console Log</span>
+          <div class="card-header-badges">
+            <span class="badge badge-blue badge-pulse" id="statusBadge">Processing</span>
+            <button class="btn btn-outline" style="padding:.2rem .6rem;font-size:.7rem;" onclick="clearConsole()">Clear</button>
+          </div>
+        </div>
+        <div class="console" id="console"></div>
+      </div>
+      <div class="status-row">
+        <span class="badge badge-yellow" id="stepBadge">Step 1 / 4</span>
+        <span class="status-label" id="stepLabel">Initializing…</span>
+      </div>
+    </div>
+
+    <!-- Right: Video Player -->
+    <div class="col-right">
+      <div class="card video-section">
+        <div class="card-header">
+          <span>🎬 Video Player</span>
+          <div class="card-header-badges">
+            <span class="badge badge-blue" id="subsBadge">No subtitles yet</span>
+          </div>
+        </div>
+        <div class="video-wrap">
+          <video id="videoPlayer" controls preload="metadata">
+            <source src="/static/uploads/{{ video_filename }}" />
+            Your browser does not support the video tag.
+          </video>
+          <div class="video-placeholder" id="videoPlaceholder">
+            <div class="vp-icon">🎞</div>
+            <div>Video loaded — subtitles will appear after processing</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Control Panel -->
+    <div class="control-section">
+      <div class="control-panel">
+        <div class="control-group">
+          <button class="btn btn-danger" id="btnCancel">⏹ Cancel</button>
+        </div>
+        <div style="font-size:.78rem;color:var(--text-dim);">
+          Job: <code style="font-family:var(--mono);color:var(--accent);">{{ job_id[:8] }}…</code>
+          &nbsp;|&nbsp;
+          Source: <strong>{{ source_lang }}</strong>
+          &nbsp;→&nbsp;
+          Target: <strong>{{ target_lang }}</strong>
+          &nbsp;|&nbsp;
+          Quality: <strong>{{ quality }}</strong>
+          &nbsp;|&nbsp;
+          Engine: <strong>{{ translator_engine }}</strong>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <footer>
+    <div class="footer-copy">
+      <span class="heart">♥</span>
+      <span>کپی رایت KhandaQh</span>
+      <span class="heart">♥</span>
+    </div>
+  </footer>
+</div>
+
+<script>
+/* ── Config from server ─────────────────────────────────────── */
+const JOB_ID           = "{{ job_id }}";
+const VIDEO_FILENAME   = "{{ video_filename }}";
+const SOURCE_LANG      = "{{ source_lang }}";
+const TARGET_LANG      = "{{ target_lang }}";
+const QUALITY          = "{{ quality }}";
+const TRANSLATOR_ENGINE= "{{ translator_engine }}";
+
+/* ── Read API key & dub from URL ───────────────────────────── */
+const urlParams = new URLSearchParams(window.location.search);
+const API_KEY = urlParams.get('api_key') || '';
+const DUB = urlParams.get('dub') === 'true';
+
+/* ── DOM refs ───────────────────────────────────────────────── */
+const consoleEl   = document.getElementById('console');
+const progFill    = document.getElementById('progFill');
+const progPct     = document.getElementById('progPct');
+const progEta     = document.getElementById('progEta');
+const stepBadge   = document.getElementById('stepBadge');
+const stepLabel   = document.getElementById('stepLabel');
+const statusBadge = document.getElementById('statusBadge');
+const subsBadge   = document.getElementById('subsBadge');
+const doneBanner  = document.getElementById('doneBanner');
+const errorBanner = document.getElementById('errorBanner');
+const errorMsg    = document.getElementById('errorMsg');
+const btnDownload = document.getElementById('btnDownload');
+const btnCancel   = document.getElementById('btnCancel');
+const videoPlayer = document.getElementById('videoPlayer');
+const videoPlaceholder = document.getElementById('videoPlaceholder');
+
+let lineNumber = 1;
+let processing = true;
+
+/* ── Console helpers ─────────────────────────────────────────── */
+function addLog(text, level = 'info') {
+  const line = document.createElement('div');
+  line.className = 'log-line';
+  line.innerHTML = `<span class="ln">${String(lineNumber).padStart(3,'0')}</span><span class="lt ${level}">${escHtml(text)}</span>`;
+  consoleEl.appendChild(line);
+  lineNumber++;
+  consoleEl.scrollTop = consoleEl.scrollHeight;
+}
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+function clearConsole() { consoleEl.innerHTML = ''; lineNumber = 1; }
+
+/* ── Steps ───────────────────────────────────────────────────── */
+function setStep(current, total, label) {
+  for (let i = 1; i <= 4; i++) {
+    const el = document.getElementById(`step-${i}`);
+    if (!el) continue;
+    el.classList.remove('active','done');
+    if (i < current) el.classList.add('done');
+    else if (i === current) el.classList.add('active');
+    if (i < current) el.querySelector('.step-num').textContent = '✓';
+    else el.querySelector('.step-num').textContent = i;
+  }
+  stepBadge.textContent = `Step ${current} / ${total}`;
+  stepLabel.textContent = label;
+}
+
+function setProgress(pct, eta) {
+  progFill.style.width = pct + '%';
+  progPct.textContent  = pct + '%';
+  progEta.textContent  = eta || '';
+}
+
+/* ── Done state ───────────────────────────────────────────────── */
+function markDone(srtUrl, srtFilename) {
+  processing = false;
+  setProgress(100, 'Complete!');
+  statusBadge.textContent = 'Done';
+  statusBadge.className = 'badge badge-green';
+  btnCancel.disabled = true;
+
+  for (let i = 1; i <= 4; i++) {
+    const el = document.getElementById(`step-${i}`);
+    if (!el) continue;
+    el.classList.remove('active');
+    el.classList.add('done');
+    el.querySelector('.step-num').textContent = '✓';
+  }
+
+  doneBanner.classList.add('show');
+  btnDownload.href = srtUrl;
+  btnDownload.download = srtFilename;
+
+  loadSubtitles(srtUrl);
+}
+
+function loadSubtitles(srtUrl) {
+  fetch(srtUrl)
+    .then(r => r.text())
+    .then(srtText => {
+      const vttText = srtToVtt(srtText);
+      const blob = new Blob([vttText], { type: 'text/vtt' });
+      const blobUrl = URL.createObjectURL(blob);
+
+      // Remove old tracks
+      while (videoPlayer.firstChild) videoPlayer.removeChild(videoPlayer.firstChild);
+      // Re-add source
+      const src = document.createElement('source');
+      src.src = `/static/uploads/${VIDEO_FILENAME}`;
+      videoPlayer.appendChild(src);
+      // Add track
+      const track = document.createElement('track');
+      track.kind    = 'subtitles';
+      track.label   = 'Translated';
+      track.srclang = TARGET_LANG || 'en';
+      track.src     = blobUrl;
+      track.default = true;
+      videoPlayer.appendChild(track);
+      videoPlayer.load();
+
+      subsBadge.textContent = '✓ Subtitles loaded';
+      subsBadge.className = 'badge badge-green';
+      videoPlaceholder.classList.add('hidden');
+    })
+    .catch(() => {
+      subsBadge.textContent = 'SRT download error';
+    });
+}
+
+function srtToVtt(srt) {
+  let vtt = 'WEBVTT\n\n';
+  const blocks = srt.trim().split(/\n\n+/);
+  blocks.forEach(block => {
+    const lines = block.trim().split('\n');
+    if (lines.length < 2) return;
+    const rest = lines[0].match(/^\d+$/) ? lines.slice(1) : lines;
+    if (rest.length < 1) return;
+    const timeLine = rest[0].replace(/,/g, '.');
+    const text = rest.slice(1).join('\n');
+    if (timeLine.includes('-->') && text.trim()) {
+      vtt += timeLine + '\n' + text + '\n\n';
+    }
+  });
+  return vtt;
+}
+
+/* ── Error state ──────────────────────────────────────────────── */
+function markError(msg) {
+  processing = false;
+  statusBadge.textContent = 'Error';
+  statusBadge.className = 'badge badge-yellow';
+  errorBanner.classList.add('show');
+  errorMsg.textContent = msg;
+  btnCancel.disabled = true;
+}
+
+/* ── SocketIO ─────────────────────────────────────────────────── */
+addLog('Connecting to server…', 'info');
+
+const socket = io({ transports: ['websocket', 'polling'] });
+
+socket.on('connect', () => {
+  addLog('✅ Connected to server. Starting processing…', 'success');
+  socket.emit('start_processing', {
+    job_id:            JOB_ID,
+    video_filename:    VIDEO_FILENAME,
+    source_lang:       SOURCE_LANG,
+    target_lang:       TARGET_LANG,
+    quality:           QUALITY,
+    translator_engine: TRANSLATOR_ENGINE,
+    api_key:           API_KEY,
+    dub:               DUB
+  });
+});
+
+socket.on('disconnect', () => {
+  if (processing) addLog('⚠️ Disconnected from server.', 'warn');
+});
+
+socket.on('connect_error', (err) => {
+  addLog('❌ Connection error: ' + err.message, 'error');
+});
+
+socket.on('started', (data) => {
+  addLog(`🚀 Job ${data.job_id} started on server.`, 'success');
+});
+
+socket.on('log', (data) => {
+  addLog(data.line, data.level || 'info');
+});
+
+socket.on('progress', (data) => {
+  setStep(data.step, data.total, data.label);
+  setProgress(data.pct || 0, data.eta || '');
+  progEta.textContent = data.eta || '';
+});
+
+socket.on('done', (data) => {
+  addLog('🎉 Processing complete!', 'success');
+  markDone(data.srt_url, data.srt_filename);
+
+  // If dubbed video is available, switch the video source
+  if (data.dubbed_video_url) {
+    const video = document.getElementById('videoPlayer');
+    const source = video.querySelector('source');
+    if (source) {
+      source.src = data.dubbed_video_url;
+      video.load();
+      addLog('🎬 Dubbed video loaded. Playing with new audio.', 'success');
+      videoPlaceholder.classList.add('hidden');
+    }
+  }
+  socket.disconnect();
+});
+
+socket.on('error', (data) => {
+  addLog('❌ ' + (data.message || 'Unknown error'), 'error');
+  markError(data.message || 'Processing failed. Check console for details.');
+  socket.disconnect();
+});
+
+socket.on('cancelled', () => {
+  addLog('⛔ Processing cancelled.', 'warn');
+  processing = false;
+  statusBadge.textContent = 'Cancelled';
+  statusBadge.className = 'badge badge-yellow';
+  btnCancel.disabled = true;
+  socket.disconnect();
+});
+
+/* ── Cancel ───────────────────────────────────────────────────── */
+btnCancel.addEventListener('click', () => {
+  if (!processing) return;
+  if (!confirm('Cancel processing? This will stop transcription and translation.')) return;
+  addLog('⛔ Sending cancel request…', 'warn');
+  socket.emit('cancel_processing', { job_id: JOB_ID });
+  fetch(`/cancel/${JOB_ID}`, { method: 'POST' }).catch(() => {});
+});
+
+/* ── Video placeholder ────────────────────────────────────────── */
+videoPlayer.addEventListener('loadedmetadata', () => {
+  videoPlaceholder.classList.add('hidden');
+});
+</script>
+</body>
+</html>
