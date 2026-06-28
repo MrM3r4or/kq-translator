@@ -116,6 +116,7 @@ http://127.0.0.1:5000
 
 ### 🔧 عیب‌یابی (Troubleshooting)
 
+```
 خطای FFmpeg not found
 مطمئن شوید FFmpeg نصب است و در PATH قرار دارد
 
@@ -130,6 +131,8 @@ http://127.0.0.1:5000
 
 خطای Connection aborted در ترجمه
 این خطا معمولاً به‌خاطر قطع ارتباط با سرور مترجم است. برنامه به‌صورت خودکار به Google Translate Fallback می‌کند
+
+```
 
 ### 👨‍💻 توسعه‌دهنده (Developer)
 - KhandaQh – توسعه‌دهنده و طراح
