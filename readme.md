@@ -12,7 +12,6 @@ TRX : TJ6upyswMxPNCeFgctiQjhLsyuGyxETug8
 یک ابزار کامل و قدرتمند برای **تبدیل خودکار گفتار ویدیو به زیرنویس و ترجمه‌ی آن به زبان‌های مختلف** با استفاده از هوش مصنوعی. این پروژه از **OpenAI Whisper** برای تشخیص گفتار، **deep-translator** برای ترجمه و **gTTS** برای دوبله‌ی صوتی استفاده می‌کند.
 
 ### Special TNX to
-
 FFmpeg : https://github.com/ffmpeg/ffmpeg
 Flask : https://flask.palletsprojects.com/
 OpenAI Whisper : https://github.com/openai/whisper
