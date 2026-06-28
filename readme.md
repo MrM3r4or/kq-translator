@@ -13,7 +13,9 @@ TRX : TJ6upyswMxPNCeFgctiQjhLsyuGyxETug8
 
 ### Special TNX to
 FFmpeg : https://github.com/ffmpeg/ffmpeg
+
 Flask : https://flask.palletsprojects.com/
+
 OpenAI Whisper : https://github.com/openai/whisper
 
 ---
@@ -35,11 +37,13 @@ OpenAI Whisper : https://github.com/openai/whisper
 ---
 
 ## 🖼️ پیش‌نمایش (Screenshot)
-<img width="1280" height="673" alt="4" src="https://github.com/user-attachments/assets/b800ff9d-22f8-4e2a-8cec-61f4ade2977f" />
-<img width="1280" height="673" alt="3" src="https://github.com/user-attachments/assets/d17ee588-319c-40e1-be2d-d3abf27dbeb9" />
-<img width="1280" height="668" alt="2" src="https://github.com/user-attachments/assets/42443ccf-0ec7-4d53-b556-460ce078488d" />
 <img width="1280" height="674" alt="1" src="https://github.com/user-attachments/assets/aac1cd9c-1208-43f3-b640-69e311188db4" />
 
+<img width="1280" height="668" alt="2" src="https://github.com/user-attachments/assets/42443ccf-0ec7-4d53-b556-460ce078488d" />
+
+<img width="1280" height="673" alt="3" src="https://github.com/user-attachments/assets/d17ee588-319c-40e1-be2d-d3abf27dbeb9" />
+
+<img width="1280" height="673" alt="4" src="https://github.com/user-attachments/assets/b800ff9d-22f8-4e2a-8cec-61f4ade2977f" />
 
 
 ---
@@ -63,6 +67,7 @@ OpenAI Whisper : https://github.com/openai/whisper
 ```bash
 git clone https://github.com/MrM3r4or/kq-translator.git
 cd kq-translator
+```
 
 ### 2. ایجاد محیط مجازی (Virtual Environment)
 ```bash 
@@ -70,25 +75,26 @@ cd kq-translator
 
 python -m venv venv
 venv\Scripts\activate
+```
 
-```bash
+
 لینوکس / macOS :
-
+```bash
 python3 -m venv venv
 source venv/bin/activate
-
+```
 ### 3. نصب کتابخانه‌های مورد نیاز
 ```bash
 pip install -r requirements.txt
-
+```
 ### 4.اجرا ی برنامه 
 ```bash
 python app.py
-
+```
 سپس مرورگر خود را باز کرده و به آدرس زیر بروید :
 ```bash
 http://127.0.0.1:5000
-
+```
 ### 🚀 نحوه‌ی استفاده (Usage)
 آپلود ویدیو – فایل ویدیویی خود را (MP4, AVI, MOV, MKV, WEBM) با کشیدن یا کلیک کردن آپلود کنید
 
